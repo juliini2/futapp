@@ -1,9 +1,14 @@
 
-/* ========================================
-   FUTAPP - LÓGICA PRINCIPAL
-======================================== */
+/* ==================================================
+   FUTAPP - SCRIPT PRINCIPAL
+   Chat conversacional conectado con Make
+================================================== */
 
-// Elementos del DOM
+
+/* ==================================================
+   1. ELEMENTOS DEL DOM
+================================================== */
+
 const formulario = document.getElementById("zona-de-escritura");
 const campoMensaje = document.getElementById("mensaje");
 const botonEnviar = document.getElementById("btn-enviar");
@@ -11,7 +16,11 @@ const chatMensajes = document.getElementById("chat-messages");
 const estadoChat = document.getElementById("chat-status");
 const contador = document.getElementById("contador");
 
-// Configuración
+
+/* ==================================================
+   2. CONFIGURACIÓN GENERAL
+================================================== */
+
 const MAX_CARACTERES = 500;
 const TIEMPO_MINIMO = 1500;
 const TIEMPO_LIMITE = 30000;
@@ -21,11 +30,34 @@ let estadoActual = "listo";
 let sessionIdEnMemoria = null;
 
 
-/* ========================================
-   IDENTIFICADOR DE SESIÓN
-======================================== */
+/* ==================================================
+   3. VERIFICAR CONFIGURACIÓN DEL WEBHOOK
+================================================== */
+
+function obtenerWebhookUrl() {
+
+    // Comprobar que config.js haya definido la constante.
+    if (typeof WEBHOOK_URL === "undefined") {
+        return null;
+    }
+
+    const url = WEBHOOK_URL.trim();
+
+    // Comprobar que la URL no esté vacía ni sea de ejemplo.
+    if (!url || url.includes("ACA VA")) {
+        return null;
+    }
+
+    return url;
+}
+
+
+/* ==================================================
+   4. IDENTIFICADOR ÚNICO DE SESIÓN
+================================================== */
 
 function generarSessionId() {
+
     if (
         typeof crypto !== "undefined" &&
         typeof crypto.randomUUID === "function"
@@ -37,8 +69,11 @@ function generarSessionId() {
         Math.random().toString(36).substring(2);
 }
 
+
 function obtenerSessionId() {
+
     try {
+
         const guardado = localStorage.getItem("futapp_session_id");
 
         if (guardado) {
@@ -52,7 +87,8 @@ function obtenerSessionId() {
         return nuevoId;
 
     } catch (error) {
-        // Si localStorage no está disponible, usamos memoria.
+
+        // Alternativa cuando localStorage no está disponible.
         if (!sessionIdEnMemoria) {
             sessionIdEnMemoria = generarSessionId();
         }
@@ -61,20 +97,25 @@ function obtenerSessionId() {
     }
 }
 
-// Se genera o recupera una sola vez al iniciar.
+
+// Se obtiene una sola vez al iniciar la aplicación.
 const sessionId = obtenerSessionId();
 
 
-/* ========================================
-   FUNCIONES VISUALES
-======================================== */
+/* ==================================================
+   5. FUNCIONES DEL CHAT
+================================================== */
 
-// Agregar una burbuja al chat de forma segura.
+
+// Crear mensajes de forma segura utilizando textContent.
 function agregarMensaje(texto, tipo) {
+
     const burbuja = document.createElement("div");
+
     burbuja.classList.add("message", tipo);
 
     const etiqueta = document.createElement("span");
+
     etiqueta.classList.add("message-label");
 
     etiqueta.textContent = tipo === "user"
@@ -82,18 +123,22 @@ function agregarMensaje(texto, tipo) {
         : "⚽ Futapp";
 
     const contenido = document.createElement("div");
-    contenido.textContent = texto;
+
+    contenido.textContent = String(texto);
 
     burbuja.appendChild(etiqueta);
     burbuja.appendChild(contenido);
 
     chatMensajes.appendChild(burbuja);
 
+    // Desplazar el chat hacia el último mensaje.
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
 }
 
+
 // Actualizar el estado visual.
 function actualizarEstado(tipo, texto) {
+
     estadoActual = tipo;
 
     estadoChat.className = "chat-status";
@@ -109,70 +154,90 @@ function actualizarEstado(tipo, texto) {
     estadoChat.textContent = texto;
 }
 
-// Bloquear o habilitar los controles.
+
+// Bloquear o habilitar controles.
 function bloquearControles(bloquear) {
+
     campoMensaje.disabled = bloquear;
     botonEnviar.disabled = bloquear;
 }
 
 
-/* ========================================
-   CONTADOR Y VALIDACIÓN
-======================================== */
+/* ==================================================
+   6. CONTADOR DE CARACTERES
+================================================== */
 
 function actualizarContador() {
+
     const cantidad = campoMensaje.value.length;
 
     contador.textContent =
         `${cantidad}/${MAX_CARACTERES} caracteres`;
 }
 
+
 campoMensaje.addEventListener("input", actualizarContador);
 
-// Enviar con Enter y permitir saltos de línea con Shift + Enter.
+
+/* ==================================================
+   7. ENVÍO CON ENTER
+================================================== */
+
+// Enter envía.
+// Shift + Enter permite escribir en otra línea.
+
 campoMensaje.addEventListener("keydown", function(event) {
+
     if (
         event.key === "Enter" &&
         !event.shiftKey &&
         !event.isComposing
     ) {
+
         event.preventDefault();
+
         formulario.requestSubmit();
     }
+
 });
 
 
-/* ========================================
-   PAUSA ENTRE ENVÍOS
-======================================== */
+/* ==================================================
+   8. PAUSA ENTRE ENVÍOS
+================================================== */
 
 function esperar(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
+    });
+
 }
 
 
-/* ========================================
-   PROCESAMIENTO DE LA RESPUESTA
-======================================== */
+/* ==================================================
+   9. INTERPRETAR RESPUESTAS DE MAKE
+================================================== */
 
 function interpretarRespuesta(texto) {
 
-    // Comprobar si Make respondió vacío.
+    // Respuesta vacía.
     if (!texto || !texto.trim()) {
         return "(respuesta vacía)";
     }
 
     try {
+
         const datos = JSON.parse(texto);
 
-        // Si la respuesta es un objeto JSON.
+        // Comprobar que sea un objeto JSON.
         if (
             datos !== null &&
             typeof datos === "object" &&
             !Array.isArray(datos)
         ) {
 
-            // Orden de prioridad de las propiedades.
+            // Orden de prioridad de los campos.
             const propiedades = [
                 "response",
                 "respuesta",
@@ -188,81 +253,102 @@ function interpretarRespuesta(texto) {
                     typeof valor === "string" &&
                     valor.trim() !== ""
                 ) {
+
                     return valor.trim();
                 }
+
             }
 
             return "Make respondió, pero sin el campo response";
         }
 
-        // JSON válido que no es un objeto.
+        // Si es JSON válido pero no un objeto.
         return texto;
 
     } catch (error) {
+
         // Si no es JSON, mostrar el texto original.
         return texto;
     }
+
 }
 
 
-/* ========================================
-   ENVÍO DEL MENSAJE A MAKE
-======================================== */
+/* ==================================================
+   10. FUNCIÓN PRINCIPAL DE ENVÍO
+================================================== */
 
 async function enviarMensaje(event) {
 
     event.preventDefault();
 
-    const mensaje = campoMensaje.value.trim();
-
-    // Validar que exista un mensaje.
-    if (!mensaje) {
+    // Evitar envíos simultáneos.
+    if (botonEnviar.disabled) {
         return;
     }
 
-    // Validar longitud máxima.
+    const mensaje = campoMensaje.value.trim();
+
+    // Validar mensaje vacío.
+    if (!mensaje) {
+        campoMensaje.focus();
+        return;
+    }
+
+    // Validar longitud.
     if (mensaje.length > MAX_CARACTERES) {
+
         actualizarEstado(
             "error",
             "El mensaje no puede superar los 500 caracteres."
         );
+
         return;
     }
+
+    // Comprobar la configuración antes de enviar.
+    const webhook = obtenerWebhookUrl();
 
     // Mostrar el mensaje del usuario.
     agregarMensaje(mensaje, "user");
 
-    // Limpiar el campo.
+    if (!webhook) {
+
+        agregarMensaje(
+            "Falta pegar la URL de tu webhook en config.js",
+            "agent"
+        );
+
+        actualizarEstado(
+            "error",
+            "Configuración pendiente"
+        );
+
+        return;
+    }
+
+    // Limpiar el campo después de validar la configuración.
     campoMensaje.value = "";
+
     actualizarContador();
 
+    // Bloquear controles mientras se procesa.
     bloquearControles(true);
 
-    actualizarEstado("cargando", "⚽ Futapp está pensando...");
+    actualizarEstado(
+        "cargando",
+        "⚽ Futapp está pensando..."
+    );
+
+    let tiempoAgotado = false;
+    let temporizador = null;
 
     try {
 
-        // Comprobar que exista una URL configurada.
-        if (
-            typeof WEBHOOK_URL === "undefined" ||
-            !WEBHOOK_URL.trim() ||
-            WEBHOOK_URL.includes("ACA VA")
-        ) {
+        /* ------------------------------------------
+           RESPETAR PAUSA MÍNIMA ENTRE ENVÍOS
+        ------------------------------------------ */
 
-            agregarMensaje(
-                "Falta pegar la URL de tu webhook en config.js",
-                "agent"
-            );
-
-            actualizarEstado(
-                "error",
-                "Configuración pendiente"
-            );
-
-            return;
-        }
-
-        // Respetar la pausa mínima entre envíos consecutivos.
         const tiempoTranscurrido = Date.now() - ultimoEnvio;
 
         const tiempoEspera = Math.max(
@@ -276,87 +362,119 @@ async function enviarMensaje(event) {
 
         ultimoEnvio = Date.now();
 
-        // Crear controlador para limitar el tiempo de espera.
+
+        /* ------------------------------------------
+           CONTROLAR TIEMPO MÁXIMO DE RESPUESTA
+        ------------------------------------------ */
+
         const controlador = new AbortController();
 
-        let tiempoAgotado = false;
+        temporizador = setTimeout(() => {
 
-        const temporizador = setTimeout(() => {
             tiempoAgotado = true;
+
             controlador.abort();
+
         }, TIEMPO_LIMITE);
 
-        try {
 
-            // Enviar únicamente los tres campos requeridos.
-            const respuesta = await fetch(WEBHOOK_URL, {
-                method: "POST",
+        /* ------------------------------------------
+           ENVIAR INFORMACIÓN A MAKE
+        ------------------------------------------ */
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+        const datosEnvio = {
+            sessionId: sessionId,
+            mensaje: mensaje,
+            fecha: new Date().toISOString()
+        };
 
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    mensaje: mensaje,
-                    fecha: new Date().toISOString()
-                }),
+        const respuesta = await fetch(webhook, {
 
-                signal: controlador.signal
-            });
+            method: "POST",
 
-            // Leer siempre la respuesta como texto.
-            const textoRespuesta = await respuesta.text();
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-            // Comprobar errores HTTP.
-            if (!respuesta.ok) {
+            // Exactamente tres campos.
+            body: JSON.stringify(datosEnvio),
 
-                agregarMensaje(
-                    `Make respondió con error (código ${respuesta.status}). Revisá que tu escenario esté en Active o que hayas apretado Run once.`,
-                    "agent"
-                );
+            signal: controlador.signal
 
-                actualizarEstado(
-                    "error",
-                    "Error en la respuesta del servidor"
-                );
+        });
 
-                return;
-            }
 
-            // Interpretar la respuesta exitosa.
-            const mensajeAgente = interpretarRespuesta(
-                textoRespuesta
+        /* ------------------------------------------
+           LEER RESPUESTA DEL SERVIDOR
+        ------------------------------------------ */
+
+        const textoRespuesta = await respuesta.text();
+
+
+        /* ------------------------------------------
+           COMPROBAR ERRORES HTTP
+        ------------------------------------------ */
+
+        if (!respuesta.ok) {
+
+            agregarMensaje(
+                `Make respondió con error (código ${respuesta.status}). Revisá que tu escenario esté en Active o que hayas apretado Run once.`,
+                "agent"
             );
 
-            agregarMensaje(mensajeAgente, "agent");
+            actualizarEstado(
+                "error",
+                "Error HTTP: " + respuesta.status
+            );
 
-            // Diferenciar una respuesta sin el campo esperado.
-            if (
-                mensajeAgente ===
-                "Make respondió, pero sin el campo response"
-            ) {
-                actualizarEstado(
-                    "error",
-                    "Respuesta recibida con formato inesperado"
-                );
-            } else {
-                actualizarEstado(
-                    "exito",
-                    "✓ Respuesta recibida"
-                );
-            }
-
-        } finally {
-            // Liberar siempre el temporizador.
-            clearTimeout(temporizador);
+            return;
         }
+
+
+        /* ------------------------------------------
+           PROCESAR RESPUESTA EXITOSA
+        ------------------------------------------ */
+
+        const mensajeAgente = interpretarRespuesta(
+            textoRespuesta
+        );
+
+        agregarMensaje(
+            mensajeAgente,
+            "agent"
+        );
+
+
+        // Identificar respuestas con formato inesperado.
+        if (
+            mensajeAgente ===
+            "Make respondió, pero sin el campo response"
+        ) {
+
+            actualizarEstado(
+                "error",
+                "Respuesta recibida con formato inesperado"
+            );
+
+        } else {
+
+            actualizarEstado(
+                "exito",
+                "✓ Respuesta recibida"
+            );
+
+        }
+
 
     } catch (error) {
 
-        // Diferenciar timeout y fallas de conexión.
-        if (error.name === "AbortError") {
+        /* ------------------------------------------
+           MANEJO DE ERRORES
+        ------------------------------------------ */
 
+        if (tiempoAgotado) {
+
+            // Tiempo máximo de 30 segundos superado.
             agregarMensaje(
                 "La solicitud tardó demasiado. Se agotó el tiempo de espera de 30 segundos. Intentá nuevamente.",
                 "agent"
@@ -369,8 +487,9 @@ async function enviarMensaje(event) {
 
         } else {
 
+            // Error de conexión, red o CORS.
             agregarMensaje(
-                "No pude conectarme con el servidor. Revisá tu conexión a Internet y la configuración del webhook de Make.",
+                "No pude conectarme con Make. Revisá tu conexión, la URL del webhook y los permisos CORS de la respuesta del servidor.",
                 "agent"
             );
 
@@ -378,32 +497,121 @@ async function enviarMensaje(event) {
                 "error",
                 "Error de conexión"
             );
+
+            console.error(
+                "Error al conectar con Make:",
+                error
+            );
+
         }
 
     } finally {
 
-        // Garantizar que la interfaz nunca quede bloqueada.
+        /* ------------------------------------------
+           LIMPIEZA Y RESTAURACIÓN DE LA INTERFAZ
+        ------------------------------------------ */
+
+        if (temporizador !== null) {
+            clearTimeout(temporizador);
+        }
+
+        // Nunca dejar la interfaz bloqueada.
         bloquearControles(false);
 
-        // Restaurar el estado si seguía cargando.
+        // Restaurar estado si todavía estaba cargando.
         if (estadoActual === "cargando") {
+
             actualizarEstado(
                 "listo",
                 "Listo para el próximo mensaje"
             );
+
         }
 
         campoMensaje.focus();
+
     }
+
 }
 
 
-/* ========================================
-   EVENTOS
-======================================== */
+/* ==================================================
+   11. INICIAR APLICACIÓN
+================================================== */
 
-formulario.addEventListener("submit", enviarMensaje);
+function iniciarFutapp() {
 
-// Estado inicial.
-actualizarContador();
-actualizarEstado("listo", "Listo para jugar");
+    // Comprobar que los elementos HTML existan.
+    if (
+        !formulario ||
+        !campoMensaje ||
+        !botonEnviar ||
+        !chatMensajes ||
+        !estadoChat ||
+        !contador
+    ) {
+
+        console.error(
+            "Futapp: No se encontraron todos los elementos HTML."
+        );
+
+        return;
+    }
+
+    // Registrar el evento de envío.
+    formulario.addEventListener(
+        "submit",
+        enviarMensaje
+    );
+
+    // Inicializar contador.
+    actualizarContador();
+
+    // Verificar configuración.
+    const webhook = obtenerWebhookUrl();
+
+    if (!webhook) {
+
+        actualizarEstado(
+            "error",
+            "Configuración pendiente: revisá config.js"
+        );
+
+        console.error(
+            "Futapp: WEBHOOK_URL no está disponible o no está configurado."
+        );
+
+    } else {
+
+        actualizarEstado(
+            "listo",
+            "Listo para jugar ⚽"
+        );
+
+        console.log(
+            "Futapp: configuración del webhook detectada correctamente."
+        );
+
+    }
+
+}
+
+
+// Ejecutar cuando el documento esté listo.
+if (document.readyState === "loading") {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        iniciarFutapp
+    );
+
+} else {
+
+    iniciarFutapp();
+
+}
+
+
+/* ==================================================
+   FIN DEL SCRIPT FUTAPP
+================================================== */

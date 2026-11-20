@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7048e8">
+
+    <title>Futapp | Tu asistente de fútbol</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- La configuración debe cargarse antes del script principal -->
+    <script src="config.js"></script>
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <main class="app-container">
+
+        <!-- ZONA DE CHAT -->
+        <section id="zona-de-chat" aria-label="zona de chat">
+
+            <header class="chat-header">
+                <div class="brand">
+                    <div class="brand-icon">⚽</div>
+                    <div>
+                        <h1>futapp<span>.</span></h1>
+                        <p>Tu pasión por el fútbol, en un solo lugar</p>
+                    </div>
+                </div>
+
+                <div class="online-indicator">
+                    <span class="online-dot"></span>
+                    Asistente disponible
+                </div>
+            </header>
+
+            <div class="chat-content" id="chat-messages"
+                 aria-live="polite" aria-relevant="additions">
+
+                <div class="welcome-message">
+                    <div class="welcome-ball">⚽</div>
+                    <h2>¡Hola, futbolero!</h2>
+                    <p>
+                        Soy Futapp, tu asistente especializado en fútbol.
+                        Preguntame lo que quieras sobre equipos, jugadores,
+                        competencias, estadísticas y mucho más.
+                    </p>
+
+                    <div class="welcome-tag">
+                        🏆 Tu próximo debate futbolero empieza acá
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="chat-status" id="chat-status"
+                 role="status" aria-live="polite">
+                Listo para jugar
+            </div>
+
+        </section>
+
+        <!-- ZONA DE ESCRITURA -->
+        <form id="zona-de-escritura" aria-label="zona de escritura">
+
+            <div class="input-wrapper">
+                <textarea
+                    id="mensaje"
+                    name="mensaje"
+                    placeholder="Escribí tu pregunta sobre fútbol..."
+                    maxlength="500"
+                    rows="1"
+                    aria-label="Escribí tu mensaje"
+                    required
+                ></textarea>
+
+                <div class="input-bottom">
+                    <span id="contador">0/500 caracteres</span>
+
+                    <button type="submit" id="btn-enviar">
+                        <span>Enviar</span>
+                        <span class="send-icon">➤</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="input-footer">
+                ⚽ Futapp · Tu compañero de cancha inteligente
+            </p>
+
+        </form>
+
+    </main>
+
+</body>
+</html>
